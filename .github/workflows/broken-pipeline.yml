@@ -1,0 +1,62 @@
+
+name: Fix Broken CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: session12/ex5
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # FIX 1: Permission Denied
+      - name: Grant Gradle execute permission
+        run: chmod +x ./gradlew
+
+      - name: Build and Test
+        run: ./gradlew clean build
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # FIX 2: Authentication Failed
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      # FIX 3: Build Context Error
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./session12/ex5
+          file: ./session12/ex5/Dockerfile
+          push: true
+          tags: ghcr.io/an256122006/ptit_it209_session12_bai5:latest
+
+
